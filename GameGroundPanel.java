@@ -16,8 +16,11 @@ public class GameGroundPanel extends JPanel {
     private ScorePanel scorePanel;
     private BulletThread bullet;
     private Shooter shooter;
+    private boolean leftPressed = false;
+    private boolean rightPressed = false;
+    private MovementThread movementThread;
 
-    public GameGroundPanel(Target target, ProfilePanel profilePanel, ScorePanel scorePanel){
+    public GameGroundPanel(Target target, ProfilePanel profilePanel, ScorePanel scorePanel) {
         setLayout(null);
         this.target = target;
         this.profilePanel = profilePanel;
@@ -30,7 +33,11 @@ public class GameGroundPanel extends JPanel {
         add(jt);
         setFocusable(true);
 
-        // 컴포넌트 생성 후 크기와 위치 설정
+        movementThread = new MovementThread();
+        movementThread.start();
+
+        addKeyListener(new MyKeyListener());
+
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -43,42 +50,101 @@ public class GameGroundPanel extends JPanel {
 
         addKeyListener(new MyKeyListener());
 
-        addTargetLabels(target.generateRandomLabel());
-
+        // 초기 타겟 추가
+        addTargetLabels(target.getMonsters());
     }
     class MyKeyListener extends KeyAdapter {
         @Override
-        public void keyPressed(KeyEvent e){
-            switch (e.getKeyCode()){
+        public void keyPressed(KeyEvent e) {
+            switch (e.getKeyCode()) {
                 case KeyEvent.VK_ENTER:
                     shoot();
                     break;
                 case KeyEvent.VK_A:
-                    shooter.moveLeft();
+                    leftPressed = true;
                     break;
                 case KeyEvent.VK_D:
-                    shooter.moveRight();
+                    rightPressed = true;
+                    break;
+            }
+        }
+
+        @Override
+        public void keyReleased(KeyEvent e) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_A:
+                    leftPressed = false;
+                    break;
+                case KeyEvent.VK_D:
+                    rightPressed = false;
                     break;
             }
         }
     }
-    public void addTargetLabels(Vector<JLabel> targets){
-        for(int i=0;i<targets.size();i++){
-            if(i<6){
-                targets.get(i).setLocation(200*i,20);
-                add(targets.get(i));
-                repaint();
+
+    public void addTargetLabels(Vector<JLabel> targets) {
+        removeAll(); // 기존 타겟들 제거
+        if (shooter != null) {
+            add(shooter); // shooter 다시 추가
+        }
+
+        int rowCount = targets.size() / 6; // 몇 줄인지 계산
+        for(int row = 0; row < rowCount; row++) {
+            for(int col = 0; col < 6; col++) {
+                int index = row * 6 + col;
+                if(index < targets.size()) {
+                    JLabel target = targets.get(index);
+                    target.setLocation(200 * col, 20 + (row * 160)); // 160은 행간 간격
+                    add(target);
+                    target.setVisible(true);
+                }
             }
         }
+        revalidate();
+        repaint();
     }
     public void shoot() {
-        if (bullet == null || !bullet.isAlive()) {
-            bullet = new BulletThread(this,
-                    shooter.getX() + shooter.getWidth()/2,
-                    shooter.getY(),
-                    target);
-            bullet.start();
+        BulletThread bullet = new BulletThread(this,
+                shooter.getX() + shooter.getWidth()/2,
+                shooter.getY(),
+                target);
+        bullet.start();
+    }
+    private class MovementThread extends Thread {
+        private boolean running = true;
+
+        @Override
+        public void run() {
+            while (running) {
+                if (leftPressed) {
+                    shooter.moveLeft();
+                }
+                if (rightPressed) {
+                    shooter.moveRight();
+                }
+                try {
+                    Thread.sleep(10); // 움직임 갱신 간격
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
         }
+
+        public void stopThread() {
+            running = false;
+        }
+    }
+    public void cleanup() {
+        if (movementThread != null) {
+            movementThread.stopThread();
+        }
+    }
+    public ScorePanel getScorePanel() {
+        return scorePanel;
+    }
+
+    public ProfilePanel getProfilePanel() {
+        return profilePanel;
     }
 
     @Override
