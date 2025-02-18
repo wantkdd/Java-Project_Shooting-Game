@@ -7,7 +7,6 @@ import java.util.Vector;
 class BulletThread extends Thread {
     private JLabel bulletLabel;
     private GameGroundPanel gamePanel;
-    private boolean hit = false;
     private Target target;
     private final int initialX;
     private int currentY;
@@ -34,6 +33,7 @@ class BulletThread extends Thread {
         panel.add(bulletLabel);
         panel.repaint();
     }
+
     private String getColorName(Color color) {
         if (color.equals(Color.RED)) return "red";
         if (color.equals(Color.GREEN)) return "green";
@@ -41,9 +41,20 @@ class BulletThread extends Thread {
         return "";
     }
 
-    private void checkAndRegenerateTargets() {
+    private void removeBullet() {
+        SwingUtilities.invokeLater(() -> {
+            if (bulletLabel.getParent() != null) {
+                gamePanel.remove(bulletLabel);
+                gamePanel.repaint();
+            }
+        });
+    }
+
+    private synchronized void checkAndRegenerateTargets() {
+        Vector<JLabel> monsters = target.getMonsters();
         boolean allInvisible = true;
-        for (JLabel monster : target.getMonsters()) {
+
+        for (JLabel monster : monsters) {
             if (monster.isVisible()) {
                 allInvisible = false;
                 break;
@@ -51,59 +62,83 @@ class BulletThread extends Thread {
         }
 
         if (allInvisible) {
-            // 새로운 타겟 줄 생성
-            Vector<JLabel> newRow = target.generateNewRow();
-            // 게임 패널에 새로운 줄 추가
-            gamePanel.addTargetLabels(target.getMonsters());
+            SwingUtilities.invokeLater(() -> {
+                target.generateInitialTargets();
+                gamePanel.addTargetLabels(target.getMonsters());
+                gamePanel.revalidate();
+                gamePanel.repaint();
+            });
         }
     }
+
     @Override
     public void run() {
-        while (currentY > -20 && !hit) {
-            currentY -= BULLET_SPEED;
-            bulletLabel.setLocation(initialX - 10, currentY);
+        try {
+            while (currentY > -20) {
+                SwingUtilities.invokeLater(() -> {
+                    bulletLabel.setLocation(initialX - 10, currentY);
+                });
 
-            Rectangle bulletBounds = bulletLabel.getBounds();
-            for(JLabel targetLabel : target.getMonsters()) {
-                if (targetLabel.isVisible() && bulletBounds.intersects(targetLabel.getBounds())) {
-                    hit = true;
+                // 현재 총알의 위치에서 충돌 체크
+                Rectangle bulletBounds = new Rectangle(
+                        initialX - 10,
+                        currentY,
+                        bulletLabel.getWidth(),
+                        bulletLabel.getHeight()
+                );
 
-                    String targetColor = targetLabel.getName();
-                    Color currentTargetColor = gamePanel.getProfilePanel().getCurrentColor();
+                boolean collision = false;
+                JLabel hitTarget = null;
 
-                    if (targetColor.equals("brick")) {
-                        // brick을 맞췄을 때는 색상만 변경하고 점수는 변경하지 않음
-                        gamePanel.getProfilePanel().updateColors();
-                    } else {
-                        // 일반 몬스터를 맞췄을 때
-                        if (targetColor.equals(getColorName(currentTargetColor))) {
-                            // 색상이 맞을 때만 점수 증가 및 색상 변경
-                            gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
-                            gamePanel.getProfilePanel().updateColors();
-                        } else {
-                            // 색상이 틀릴 때는 감점만
-                            gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
+                synchronized (target.getMonsters()) {
+                    for (JLabel targetLabel : target.getMonsters()) {
+                        if (targetLabel.isVisible() &&
+                                bulletBounds.intersects(targetLabel.getBounds())) {
+                            hitTarget = targetLabel;
+                            collision = true;
+                            break;  // 첫 번째 충돌 발견 시 즉시 종료
                         }
                     }
-
-                    targetLabel.setVisible(false);
-                    gamePanel.remove(targetLabel);
-                    gamePanel.repaint();
-
-                    // 모든 타겟이 사라졌는지 확인
-                    checkAndRegenerateTargets();
-                    break;
                 }
-            }
 
-            try {
-                sleep(3);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                if (collision && hitTarget != null) {
+                    final JLabel finalHitTarget = hitTarget;
+                    SwingUtilities.invokeLater(() -> {
+                        // 타겟 처리
+                        String targetColor = finalHitTarget.getName();
+                        Color currentTargetColor = gamePanel.getProfilePanel().getCurrentColor();
+
+                        if (targetColor.equals("brick")) {
+                            gamePanel.getProfilePanel().updateColors();
+                        } else {
+                            if (targetColor.equals(getColorName(currentTargetColor))) {
+                                gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
+                                gamePanel.getProfilePanel().updateColors();
+                            } else {
+                                gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
+                            }
+                        }
+
+                        finalHitTarget.setVisible(false);
+                        gamePanel.remove(finalHitTarget);
+                    });
+
+                    // 총알 제거
+                    removeBullet();
+
+                    // 새로운 타겟 생성 체크
+                    checkAndRegenerateTargets();
+
+                    return;  // 쓰레드 즉시 종료
+                }
+
+                currentY -= BULLET_SPEED;
+                Thread.sleep(3);
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            removeBullet();
         }
-
-        gamePanel.remove(bulletLabel);
-        gamePanel.repaint();
     }
 }
