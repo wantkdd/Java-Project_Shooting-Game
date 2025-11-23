@@ -51,11 +51,12 @@ Java-Project_Shooting-Game/
 ├── StartPanel.java           # 시작 화면
 ├── GamePanel.java            # 게임 패널 (레이아웃 관리)
 ├── GameGroundPanel.java      # 게임 플레이 영역
-├── ScorePanel.java           # 점수 및 생명 표시 패널
+├── ScorePanel.java           # 점수, 생명, 콤보 표시 패널
 ├── ProfilePanel.java         # 프로필 및 색상 표시 패널
 ├── Shooter.java              # 플레이어 슈터
 ├── Target.java               # 타겟(몬스터/벽돌) 생성 관리
 ├── BulletThread.java         # 총알 쓰레드 (충돌 처리)
+├── HighScoreManager.java     # 하이스코어 저장/로드 관리
 └── images/                   # 게임 이미지 리소스
     ├── introBackground.png
     ├── gameGroundBackground.png
