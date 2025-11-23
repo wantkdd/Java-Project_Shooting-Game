@@ -74,7 +74,9 @@ class BulletThread extends Thread {
     @Override
     public void run() {
         try {
-            while (currentY > -20) {
+            boolean hasHit = false; // 이미 충돌했는지 추적
+
+            while (currentY > -20 && !hasHit) {
                 SwingUtilities.invokeLater(() -> {
                     bulletLabel.setLocation(initialX - 10, currentY);
                 });
@@ -87,7 +89,6 @@ class BulletThread extends Thread {
                         bulletLabel.getHeight()
                 );
 
-                boolean collision = false;
                 JLabel hitTarget = null;
 
                 synchronized (target.getMonsters()) {
@@ -95,13 +96,14 @@ class BulletThread extends Thread {
                         if (targetLabel.isVisible() &&
                                 bulletBounds.intersects(targetLabel.getBounds())) {
                             hitTarget = targetLabel;
-                            collision = true;
+                            hasHit = true; // 충돌 플래그 설정
+                            targetLabel.setVisible(false); // 즉시 invisible 처리로 중복 충돌 방지
                             break;  // 첫 번째 충돌 발견 시 즉시 종료
                         }
                     }
                 }
 
-                if (collision && hitTarget != null) {
+                if (hasHit && hitTarget != null) {
                     final JLabel finalHitTarget = hitTarget;
                     SwingUtilities.invokeLater(() -> {
                         // 타겟 처리
@@ -112,15 +114,23 @@ class BulletThread extends Thread {
                             gamePanel.getProfilePanel().updateColors();
                         } else {
                             if (targetColor.equals(getColorName(currentTargetColor))) {
+                                // 올바른 색상 맞춤
                                 gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
                                 gamePanel.getProfilePanel().updateColors();
                             } else {
+                                // 잘못된 색상 맞춤 - 점수 감소 및 생명 감소
                                 gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
+                                gamePanel.getScorePanel().decreaseLife();
+
+                                // 생명이 0이 되면 게임 오버 체크
+                                if (gamePanel.getScorePanel().getLife() <= 0) {
+                                    gamePanel.gameOver();
+                                }
                             }
                         }
 
-                        finalHitTarget.setVisible(false);
                         gamePanel.remove(finalHitTarget);
+                        gamePanel.repaint();
                     });
 
                     // 총알 제거
