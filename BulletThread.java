@@ -122,8 +122,12 @@ class BulletThread extends Thread {
                                 gamePanel.getScorePanel().updateScore(targetColor, currentTargetColor);
                                 gamePanel.getScorePanel().decreaseLife();
 
+                                // 부기 표정 업데이트
+                                int currentLife = gamePanel.getScorePanel().getLife();
+                                gamePanel.getProfilePanel().updateBoogieExpression(currentLife);
+
                                 // 생명이 0이 되면 게임 오버 체크
-                                if (gamePanel.getScorePanel().getLife() <= 0) {
+                                if (currentLife <= 0) {
                                     gamePanel.gameOver();
                                 }
                             }

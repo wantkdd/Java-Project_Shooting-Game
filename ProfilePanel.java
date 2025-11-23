@@ -8,6 +8,7 @@ public class ProfilePanel extends JPanel {
     private ImageIcon funnyBoogie = new ImageIcon("images/funnyBoogie.png");
     private ImageIcon sadBoogie = new ImageIcon("images/sadBoogie.png");
     public ImageIcon profileImage = null;
+    private JLabel profileLabel;  // 부기 이미지 라벨
     private JLabel currentColorBox = new JLabel();  // 현재 색상
     private JLabel nextColorBox = new JLabel();     // 다음 색상
     private Color currentColor;
@@ -24,9 +25,9 @@ public class ProfilePanel extends JPanel {
         setLayout(null);
 
         // 프로필 이미지 설정
-        JLabel profile = new JLabel(profileImage);
-        profile.setBounds(60, 20, 200, 300);
-        add(profile);
+        profileLabel = new JLabel(profileImage);
+        profileLabel.setBounds(60, 20, 200, 300);
+        add(profileLabel);
 
         // 현재 색상 박스 (큰 박스)
         currentColorBox.setBounds(60, 340, 200, 200);
@@ -44,20 +45,40 @@ public class ProfilePanel extends JPanel {
 
     public void setDefaultBoogie() {
         profileImage = defaultBoogie;
+        if (profileLabel != null) {
+            profileLabel.setIcon(profileImage);
+        }
         repaint();
         revalidate();
     }
 
     public void setFunnyBoogie() {
         profileImage = funnyBoogie;
+        if (profileLabel != null) {
+            profileLabel.setIcon(profileImage);
+        }
         repaint();
         revalidate();
     }
 
     public void setSadBoogie() {
         profileImage = sadBoogie;
+        if (profileLabel != null) {
+            profileLabel.setIcon(profileImage);
+        }
         repaint();
         revalidate();
+    }
+
+    // 생명 수에 따른 부기 표정 업데이트
+    public void updateBoogieExpression(int life) {
+        if (life <= 1) {
+            setSadBoogie();  // 생명 1개 이하: 슬픈 얼굴
+        } else if (life >= 4) {
+            setFunnyBoogie();  // 생명 4개 이상: 웃는 얼굴
+        } else {
+            setDefaultBoogie();  // 생명 2-3개: 보통 얼굴
+        }
     }
 
     // 현재 색상 설정 메소드들 - 이전 colorBox 관련 메소드들을 대체

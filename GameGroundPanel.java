@@ -21,19 +21,18 @@ public class GameGroundPanel extends JPanel {
     private MovementThread movementThread;
     private boolean isGameOver = false;
     private boolean isPaused = false;
+    private HighScoreManager highScoreManager;
+    private boolean isNewHighScore = false;
 
     public GameGroundPanel(Target target, ProfilePanel profilePanel, ScorePanel scorePanel) {
         setLayout(null);
         this.target = target;
         this.profilePanel = profilePanel;
         this.scorePanel = scorePanel;
+        this.highScoreManager = new HighScoreManager();
 
-        JTextField jt = new JTextField(100);
-        jt.setBackground(Color.BLACK);
-        jt.setOpaque(true);
-        jt.setLocation(100,100);
-        add(jt);
         setFocusable(true);
+        requestFocusInWindow();
 
         movementThread = new MovementThread();
         movementThread.start();
@@ -49,8 +48,6 @@ public class GameGroundPanel extends JPanel {
                 shooter.setLocation(getWidth()/2 - shooter.getWidth()/2, getHeight() - 150);
             }
         });
-
-        addKeyListener(new MyKeyListener());
 
         // 초기 타겟 추가
         addTargetLabels(target.getMonsters());
@@ -138,15 +135,23 @@ public class GameGroundPanel extends JPanel {
     public void gameOver() {
         isGameOver = true;
         isPaused = false;
+
+        // 하이스코어 체크
+        int currentScore = scorePanel.getScore();
+        isNewHighScore = highScoreManager.checkAndUpdateHighScore(currentScore);
+
         repaint();
     }
 
     public void restartGame() {
         isGameOver = false;
         isPaused = false;
+        isNewHighScore = false;
         scorePanel.resetScore();
         scorePanel.resetLife();
+        scorePanel.resetCombo();
         profilePanel.setRandomColors();
+        profilePanel.setFunnyBoogie();  // 재시작 시 웃는 얼굴로
         target.generateInitialTargets();
         addTargetLabels(target.getMonsters());
         repaint();
@@ -208,18 +213,33 @@ public class GameGroundPanel extends JPanel {
             String gameOverText = "게임 오버";
             FontMetrics fm = g.getFontMetrics();
             int x = (getWidth() - fm.stringWidth(gameOverText)) / 2;
-            g.drawString(gameOverText, x, getHeight() / 2 - 50);
+            g.drawString(gameOverText, x, getHeight() / 2 - 100);
+
+            // 신기록 표시
+            if (isNewHighScore) {
+                g.setColor(Color.YELLOW);
+                g.setFont(new Font("MalgunGothic", Font.BOLD, 50));
+                String newRecordText = "★ 신기록! ★";
+                x = (getWidth() - g.getFontMetrics().stringWidth(newRecordText)) / 2;
+                g.drawString(newRecordText, x, getHeight() / 2 - 20);
+            }
 
             g.setColor(Color.WHITE);
             g.setFont(new Font("MalgunGothic", Font.PLAIN, 40));
             String scoreText = "최종 점수: " + scorePanel.getScore();
             x = (getWidth() - g.getFontMetrics().stringWidth(scoreText)) / 2;
-            g.drawString(scoreText, x, getHeight() / 2 + 50);
+            g.drawString(scoreText, x, getHeight() / 2 + 40);
+
+            // 하이스코어 표시
+            g.setFont(new Font("MalgunGothic", Font.PLAIN, 30));
+            String highScoreText = "최고 기록: " + highScoreManager.getHighScore();
+            x = (getWidth() - g.getFontMetrics().stringWidth(highScoreText)) / 2;
+            g.drawString(highScoreText, x, getHeight() / 2 + 90);
 
             g.setFont(new Font("MalgunGothic", Font.PLAIN, 30));
             String restartText = "R키를 눌러 재시작";
             x = (getWidth() - g.getFontMetrics().stringWidth(restartText)) / 2;
-            g.drawString(restartText, x, getHeight() / 2 + 120);
+            g.drawString(restartText, x, getHeight() / 2 + 150);
         }
 
         // 일시정지 화면
